@@ -767,19 +767,29 @@
         }
 
         // Fetch all collections
+        // Fetch all collections (with security rule awareness)
         async function fetchAllCollections() {
             const collections = {};
 
-            // Try common collection names
-            const commonCollections = ['products', 'notes', 'todos', 'users', 'sensors'];
+            // Only try collections that are likely accessible
+            const accessibleCollections = ['sensors', 'devices', 'my_collection']; // Add others you create
 
-            for (const collectionName of commonCollections) {
+            for (const collectionName of accessibleCollections) {
                 try {
                     const response = await fetch(`${API_URL}/data/list/${collectionName}`, {
                         headers: {
                             'Authorization': `Bearer ${authToken}`
                         }
                     });
+
+                    if (response.status === 403) {
+                        console.log(`🔒 No access to collection: ${collectionName}`);
+                        continue; // Skip collections we can't access
+                    }
+
+                    if (!response.ok) {
+                        continue; // Skip if error
+                    }
 
                     const result = await response.json();
 
@@ -788,6 +798,7 @@
                     }
                 } catch (error) {
                     // Collection doesn't exist or error, skip it
+                    console.log(`⏭️  Skipping ${collectionName}: ${error.message}`);
                 }
             }
 
