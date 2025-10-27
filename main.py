@@ -1,12 +1,16 @@
-# main.py - AlphaBase v4.0 (Clean Refactored Version)
-from fastapi import FastAPI, HTTPException, Depends, WebSocket
+# main.py - AlphaBase v4.0 (FIXED)
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 import jwt
 from datetime import datetime, timedelta
 import uvicorn
+import json
+import os
 
 # Import our refactored modules
 from models import Base, engine, SessionLocal, UserDB, DataDB, FileDB
@@ -15,16 +19,6 @@ from query_system import query_parser, query_engine
 from file_storage import file_storage
 from websocket_manager import manager
 from mqtt_manager import mqtt_manager
-
-
-
-# Create instances
-security_rules = security_rules.security_rules
-query_parser = query_system.query_parser
-query_engine = query_system.query_engine
-file_storage = file_storage.file_storage
-manager = websocket_manager.manager
-mqtt_manager = mqtt_manager.mqtt_manager
 
 # FastAPI App
 app = FastAPI(title="AlphaBase", version="4.0.0")
@@ -90,7 +84,7 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def verify_token(credentials: str = Depends(security)):
+def verify_token(credentials = Depends(security)):
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -104,7 +98,7 @@ def verify_token(credentials: str = Depends(security)):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 # =============================================================================
-# API ENDPOINTS (Clean and Organized)
+# API ENDPOINTS
 # =============================================================================
 
 @app.get("/")
@@ -169,7 +163,6 @@ async def set_data(item: DataItem, username: str = Depends(verify_token), db: Se
     data_id = f"{item.collection}:{item.key}"
     existing_data = db.query(DataDB).filter(DataDB.id == data_id).first()
     
-    import json
     if existing_data:
         resource_data = {"owner": existing_data.owner, "id": existing_data.id}
         if not security_rules.validate_write(item.collection, username, resource_data):
@@ -205,7 +198,6 @@ async def get_data(collection: str, key: str, username: str = Depends(verify_tok
     if not security_rules.validate_read(collection, username, resource_data):
         raise HTTPException(status_code=403, detail="Not authorized to read this data")
     
-    import json
     return {
         "success": True,
         "collection": collection,
@@ -220,7 +212,6 @@ async def list_collection(collection: str, username: str = Depends(verify_token)
         raise HTTPException(status_code=403, detail=f"Read access denied to collection: {collection}")
     
     data_items = db.query(DataDB).filter(DataDB.collection == collection).all()
-    import json
     filtered_items = {}
     for item in data_items:
         resource_data = {"owner": item.owner, "id": item.id}
@@ -236,7 +227,6 @@ async def query_data(collection: str, where: str = None, orderBy: str = None, li
         raise HTTPException(status_code=403, detail=f"Read access denied to collection: {collection}")
     
     data_items = db.query(DataDB).filter(DataDB.collection == collection).all()
-    import json
     query_data = []
     for item in data_items:
         resource_data = {"owner": item.owner, "id": item.id}
@@ -271,8 +261,31 @@ async def query_data(collection: str, where: str = None, orderBy: str = None, li
         "results": filtered_data
     }
 
+@app.get("/data/collections")
+async def list_collections(username: str = Depends(verify_token), db: Session = Depends(get_db)):
+    """List all collections accessible to the current user"""
+    try:
+        # Get all unique collections from the database
+        data_items = db.query(DataDB.collection).distinct().all()
+        
+        # Filter collections based on read permissions
+        collections = []
+        for item in data_items:
+            collection = item[0]
+            if security_rules.validate_read(collection, username):
+                collections.append(collection)
+        
+        return {
+            "success": True,
+            "collections": sorted(collections)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.delete("/data/delete/{collection}/{key}")
 async def delete_data(collection: str, key: str, username: str = Depends(verify_token), db: Session = Depends(get_db)):
+
+    
     if not security_rules.validate_write(collection, username):
         raise HTTPException(status_code=403, detail=f"Write access denied to collection: {collection}")
     
@@ -294,9 +307,6 @@ async def delete_data(collection: str, key: str, username: str = Depends(verify_
 @app.post("/storage/upload")
 async def upload_file(file: UploadFile = File(...), is_public: str = Form("false"), 
                      username: str = Depends(verify_token), db: Session = Depends(get_db)):
-    from fastapi import UploadFile, File, Form
-    import os
-    
     max_size = 10 * 1024 * 1024
     file.file.seek(0, 2)
     file_size = file.file.tell()
@@ -333,7 +343,6 @@ async def upload_file(file: UploadFile = File(...), is_public: str = Form("false
 
 @app.get("/storage/download/{file_id}")
 async def download_file(file_id: str, username: str = Depends(verify_token), db: Session = Depends(get_db)):
-    from fastapi.responses import FileResponse
     file_record = db.query(FileDB).filter(FileDB.id == file_id).first()
     if not file_record:
         raise HTTPException(status_code=404, detail="File not found")
@@ -407,6 +416,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # Main
 if __name__ == "__main__":
-    print("🚀 Starting AlphaBase v4.0 (Refactored)...")
+    print("🚀 Starting AlphaBase v4.0...")
     mqtt_manager.start()
     uvicorn.run(app, host="0.0.0.0", port=8000)

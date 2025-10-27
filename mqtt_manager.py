@@ -88,16 +88,21 @@ class MQTTManager:
             
             db.commit()
             
-            # Broadcast real-time update via WebSocket
-            asyncio.run_coroutine_threadsafe(
-                manager.broadcast(json.dumps({
-                    "action": "update",
-                    "collection": collection,
-                    "key": key,
-                    "source": "mqtt"
-                })),
-                asyncio.get_event_loop()
-            )
+            # Broadcast real-time update via WebSocket (FIXED)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.run_coroutine_threadsafe(
+                        manager.broadcast(json.dumps({
+                            "action": "update",
+                            "collection": collection,
+                            "key": key,
+                            "source": "mqtt"
+                        })),
+                        loop
+                    )
+            except Exception as e:
+                print(f"⚠️  Could not broadcast via WebSocket: {e}")
             
             print(f"✅ MQTT data stored: {collection}/{key}")
             
@@ -110,12 +115,13 @@ class MQTTManager:
     def start(self):
         def run_mqtt():
             try:
-                self.client.connect("localhost", 1883, 60)
+                # FIXED: Use your PC's IP instead of localhost
+                self.client.connect("192.168.0.52", 1883, 60)
                 print("🚀 MQTT client starting...")
                 self.client.loop_forever()
             except Exception as e:
                 print(f"❌ MQTT connection failed: {e}")
-                print("💡 Make sure Mosquitto is running: mosquitto")
+                print("💡 Make sure Mosquitto is running: mosquitto -c mosquitto.conf -v")
         
         # Start MQTT in background thread
         mqtt_thread = threading.Thread(target=run_mqtt)

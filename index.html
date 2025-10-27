@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlphaBase Console v4.0</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <div class="logo">
+                <h1>AlphaBase</h1>
+                <p>Console v4.0</p>
+            </div>
+
+            <div id="loginStatus" class="status"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign in</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Console -->
+    <div id="console" class="console" style="display: none;">
+        <!-- Header -->
+        <div class="console-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="console-title">AlphaBase Console</div>
+                <span class="realtime-badge">
+                    <span class="realtime-dot"></span>
+                    <span id="realtimeText">Real-time</span>
+                </span>
+            </div>
+            <div class="user-section">
+                <span>Signed in as <strong id="currentUser"></strong></span>
+                <button class="btn btn-outline" style="padding: 8px 16px;" id="logoutBtn">Sign out</button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="console-nav">
+            <button class="nav-item active" data-view="dashboard">Dashboard</button>
+            <button class="nav-item" data-view="analytics">Analytics</button>
+            <button class="nav-item" data-view="data">Data Manager</button>
+            <button class="nav-item" data-view="collections">Collections</button>
+        </div>
+
+        <!-- Content -->
+        <div class="console-content">
+            <!-- Dashboard View -->
+            <div id="dashboardView" class="view active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Users</h3>
+                        <div class="number" id="totalUsers">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Collections</h3>
+                        <div class="number" id="totalCollections">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Data Items</h3>
+                        <div class="number" id="totalItems">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Server Status</h3>
+                        <div class="number status-indicator" style="font-size: 16px;">
+                            <span class="status-dot"></span>
+                            <span>Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Recent Data</h2>
+                    <div id="recentDataTable"></div>
+                </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="analyticsView" class="view">
+                <div class="panel">
+                    <h2>📊 Data Analytics</h2>
+                    <canvas id="activityChart"></canvas>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Press 1 Runtime</h3>
+                        <div class="number" id="press1Runtime">0 min</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Press 2 Runtime</h3>
+                        <div class="number" id="press2Runtime">0 min</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Press 3 Runtime</h3>
+                        <div class="number" id="press3Runtime">0 min</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Cycles</h3>
+                        <div class="number" id="totalCycles">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Manager View -->
+            <div id="dataView" class="view">
+                <div class="panel">
+                    <h2>Data Manager</h2>
+
+                    <div class="form-group">
+                        <label>Collection</label>
+                        <input type="text" id="collection" placeholder="e.g. products, users, notes">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Document ID</label>
+                        <input type="text" id="key" placeholder="e.g. item1, user123">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Data (JSON)</label>
+                        <textarea id="dataValue" placeholder='{"field": "value"}'></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="saveDataBtn">Save</button>
+                        <button class="btn btn-secondary" id="loadDataBtn">Load</button>
+                    </div>
+
+                    <div id="dataStatus" class="status"></div>
+
+                    <div id="dataResult" style="display: none; margin-top: 20px;">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 500;">Response</h3>
+                        <pre id="dataResponse"
+                            style="background: #f8f9fa; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; border: 1px solid #e8eaed;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collections View -->
+            <div id="collectionsView" class="view">
+                <div class="panel">
+                    <h2>Collections Overview</h2>
+                    <div id="collectionsTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- JavaScript Modules -->
+    <script src="js/api.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Initialize application -->
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize event listeners
+            const loginForm = document.getElementById('loginForm');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const saveDataBtn = document.getElementById('saveDataBtn');
+            const loadDataBtn = document.getElementById('loadDataBtn');
+            const navItems = document.querySelectorAll('.nav-item');
+
+            // Login form handler
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    if (window.app && window.app.login) {
+                        window.app.login(username, password);
+                    } else {
+                        console.error('App login function not available');
+                    }
+                });
+            }
+
+            // Logout button handler
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    if (window.app && window.app.logout) {
+                        window.app.logout();
+                    } else {
+                        console.error('App logout function not available');
+                    }
+                });
+            }
+
+            // Data manager buttons
+            if (saveDataBtn) {
+                saveDataBtn.addEventListener('click', function() {
+                    if (window.api && window.api.saveData) {
+                        window.api.saveData();
+                    } else {
+                        console.error('API saveData function not available');
+                    }
+                });
+            }
+
+            if (loadDataBtn) {
+                loadDataBtn.addEventListener('click', function() {
+                    if (window.api && window.api.loadData) {
+                        window.api.loadData();
+                    } else {
+                        console.error('API loadData function not available');
+                    }
+                });
+            }
+
+            // Navigation handlers
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const view = this.getAttribute('data-view');
+                    if (window.app && window.app.switchView) {
+                        window.app.switchView(view);
+                    } else {
+                        console.error('App switchView function not available');
+                    }
+                });
+            });
+
+            console.log('AlphaBase Console v4.0 initialized');
+        });
+    </script>
+</body>
+
+</html>
